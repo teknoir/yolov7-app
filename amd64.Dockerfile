@@ -3,7 +3,7 @@ RUN rm -rf /opt/pytorch  # remove 1.2GB dir
 
 RUN apt update && apt install --no-install-recommends -y zip htop screen libgl1-mesa-glx
 
-COPY yolov7/requirements.txt .
+COPY requirements.txt .
 RUN python -m pip install --upgrade pip wheel
 RUN pip uninstall -y Pillow torchtext  # torch torchvision
 RUN pip install --no-cache -r requirements.txt albumentations wandb gsutil notebook Pillow>=9.1.0 \
