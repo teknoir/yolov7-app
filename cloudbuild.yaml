@@ -1,0 +1,68 @@
+timeout: '18000s'
+
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'amd64'
+    entrypoint: 'bash'
+    env:
+      - 'DOCKER_CLI_EXPERIMENTAL=enabled'
+    args:
+      - -c
+      - |
+        docker build -t gcr.io/$PROJECT_ID/yolov7:${BRANCH_NAME}-amd64 -f ./amd64.Dockerfile .
+        docker push gcr.io/$PROJECT_ID/yolov7:${BRANCH_NAME}-amd64
+
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'arm64'
+    entrypoint: 'bash'
+    env:
+      - 'DOCKER_CLI_EXPERIMENTAL=enabled'
+    args:
+      - -c
+      - |
+        docker build -t gcr.io/$PROJECT_ID/yolov7:${BRANCH_NAME}-arm64 -f ./arm64.Dockerfile .
+        docker push gcr.io/$PROJECT_ID/yolov7:${BRANCH_NAME}-arm64
+
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'cpu'
+    entrypoint: 'bash'
+    env:
+      - 'DOCKER_CLI_EXPERIMENTAL=enabled'
+    args:
+      - -c
+      - |
+        docker build -t gcr.io/$PROJECT_ID/yolov7:${BRANCH_NAME}-cpu -f ./cpu.Dockerfile .
+        docker push gcr.io/$PROJECT_ID/yolov7:${BRANCH_NAME}-cpu
+
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'manifest'
+    entrypoint: 'bash'
+    env:
+      - 'DOCKER_CLI_EXPERIMENTAL=enabled'
+    args:
+      - -c
+      - |
+        docker manifest create \
+        gcr.io/$PROJECT_ID/yolov7:${BRANCH_NAME}-${SHORT_SHA} \
+        gcr.io/$PROJECT_ID/yolov7:${BRANCH_NAME}-amd64 \
+        gcr.io/$PROJECT_ID/yolov7:${BRANCH_NAME}-arm64 \
+        gcr.io/$PROJECT_ID/yolov7:${BRANCH_NAME}-cpu
+      
+        docker manifest annotate \
+        gcr.io/$PROJECT_ID/yolov7:${BRANCH_NAME}-${SHORT_SHA} \
+        gcr.io/$PROJECT_ID/yolov7:${BRANCH_NAME}-amd64 \
+        --os=linux
+
+        docker manifest annotate \
+        gcr.io/$PROJECT_ID/yolov7:${BRANCH_NAME}-${SHORT_SHA} \
+        gcr.io/$PROJECT_ID/yolov7:${BRANCH_NAME}-arm64 \
+        --os=linux \
+        --arch=arm64
+
+        docker manifest annotate \
+        gcr.io/$PROJECT_ID/yolov7:${BRANCH_NAME}-${SHORT_SHA} \
+        gcr.io/$PROJECT_ID/yolov7:${BRANCH_NAME}-cpu \
+        --os=linux
+      
+        docker manifest push gcr.io/$PROJECT_ID/yolov7:${BRANCH_NAME}-${SHORT_SHA}
+    waitFor: ['amd64', 'arm64', 'cpu']
