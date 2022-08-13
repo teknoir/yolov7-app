@@ -18,3 +18,4 @@ RUN git clone https://github.com/WongKinYiu/yolov7.git /usr/src/app
 ENV OMP_NUM_THREADS=8
 ENV WANDB_MODE=disabled
 
+ENTRYPOINT ["/bin/bash"]
