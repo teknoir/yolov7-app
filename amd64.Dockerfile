@@ -1,6 +1,5 @@
-#FROM nvcr.io/nvidia/pytorch:22.07-py3
+nvcr.io/nvidia/pytorch:21.08-py3
 
-FROM pytorch/pytorch:1.7.1-cuda11.4-cudnn8-devel
 RUN rm -rf /opt/pytorch  # remove 1.2GB dir
 
 RUN apt update && apt install --no-install-recommends -y zip htop screen libgl1-mesa-glx
