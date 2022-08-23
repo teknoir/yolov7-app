@@ -21,6 +21,10 @@ from utils.general import check_img_size, non_max_suppression, scale_coords, xyx
 from utils.torch_utils import select_device, time_synchronized
 from utils.plots import plot_one_box
 
+
+#  MQTT_IN_0="camera/images" MQTT_SERVICE_HOST=192.168.68.104 MQTT_SERVICE_PORT=31883 WEIGHTS=weights/best_weights.pt IMG_SIZE=640 CLASS_NAMES=ppe-bbox-clean-20220821000000146/dataset/object.names python3 app.py 
+
+
 APP_NAME = os.getenv('APP_NAME', 'yolov7')
 
 args = {
@@ -194,14 +198,14 @@ def detect(userdata, im0, image_mime):
 
             for *xyxy, confidence, detected_label in reversed(det):
                 xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()  # normalized xywh
-                label_index = int(detected_label.item())
                 conf = confidence.item()
+                
+                label_index = int(detected_label.item())                
+                label=None
                 if label_index >= 0 and label_index < len(userdata["CLASS_NAMES"]):
-                    label = userdata["CLASS_NAMES"][int(detected_label.item())]
-                else:
-                    print("Unusual label_index: {}".format(label_index))
-                    label = "?"
-                if label != "?":
+                    label = userdata["CLASS_NAMES"][label_index]
+
+                if label:
                     detections.append({'label': label, 
                                         'x': xywh[0],
                                         'y': xywh[1],
