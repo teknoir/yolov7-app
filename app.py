@@ -10,7 +10,6 @@ from PIL import Image
 
 import paho.mqtt.client as mqtt
 
-import cv2
 import numpy as np
 import torch
 import torch.backends.cudnn as cudnn
@@ -154,9 +153,6 @@ args["STRIDE"] = stride
 
 def detect(userdata, im0, image_mime):
 
-    # resize image to imgsz x imgsz - ???
-    # img = cv2.resize(im0, dsize=(imgsz, imgsz), interpolation=cv2.INTER_CUBIC)
-        
     # Padded resize
     img = letterbox(im0, userdata["IMG_SIZE"], stride=userdata["STRIDE"])[0]
 
