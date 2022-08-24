@@ -2,7 +2,7 @@ timeout: '18000s'
 
 steps:
   - id: Build NVIDIA Tegra images with edgebuild.yaml
-    name: gcr.io/$PROJECT_ID/edgebuild
+    name: gcr.io/teknoir/edgebuild
     env:
       - 'PROJECT_ID=$PROJECT_ID'
       - 'BRANCH_NAME=$BRANCH_NAME'
