@@ -61,7 +61,7 @@ if args["CLASS_NAMES"] != "":
         for line in names_file:
             if line != "" and line != "\n":
                 class_names.append(line.strip())
-    args["CLASSES"] = class_names
+    args["CLASS_NAMES"] = class_names
 else:
     print("You must specify 'CLASS_NAMES'")
     sys.exit(1)
