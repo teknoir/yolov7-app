@@ -1,0 +1,91 @@
+---
+- name: yolov7
+  hosts: all
+  vars:
+    project_id: "{{ lookup('env','PROJECT_ID') }}"
+#    ns: "{{ lookup('env','NAMESPACE') }}"
+#    branch_name: "{{ lookup('env','BRANCH_NAME') }}"
+    location: us-central1
+  tasks:
+    - name: Ensure workdir (and some subdirs)
+      ansible.builtin.file:
+        path: /opt/teknoir/yolov7
+        state: directory
+        mode: '0755'
+
+    - name: RSync workdir
+      rsync:
+        src: "{{ playbook_dir }}/"
+        dest: /opt/teknoir/yolov7/
+        recursive: yes
+        delete: yes
+        rsync_opts:
+          - --include=cfg/
+          - --include=cfg/baseline/
+          - --include=cfg/deploy/
+          - --include=cfg/training/
+          - --include=data/
+          - --include=models/
+          - --include=utils/
+          - --include=utils/aws/
+          - --include=utils/google_app_engine/
+          - --include=utils/wandb_logging/
+          - --include=*.yaml
+          - --include=*.txt
+          - --include=*.sh
+          - --include=*.py
+          - --include=*.Dockerfile
+          - --exclude=*
+
+    - name: Get L4T Version
+      shell:
+        cmd: cat /etc/nv_tegra_release
+      register: nv_tegra_release_content
+
+    - name: Set L4T Version variable
+      set_fact:
+        real_l4t_version: "r{{ nv_tegra_release_content.stdout | regex_search('R(\\d+).*REVISION:\\s+(\\d+.\\d+)', '\\1', '\\2') | join('.') }}"
+        l4t_version: r32.7.1
+
+    - name: Set image vars
+      set_fact:
+        base_image: "nvcr.io/nvidia/l4t-pytorch:{{ l4t_version }}-pth1.10-py3"
+        image_name: "gcr.io/teknoir/yolov7"
+        tag: "l4t{{ l4t_version }}"
+
+    - name: Build ONNX yolov7 image
+      ansible.builtin.shell: |
+        export DOCKER_BUILDKIT=1
+        docker build \
+        --tag={{ image_name }}:{{ tag }} \
+        --build-arg=BASE_IMAGE={{ base_image }} \
+        --file=arm64v8.l4t.Dockerfile .
+      args:
+        chdir: /opt/teknoir/yolov7
+      vars:
+        ansible_command_timeout: 6000
+
+    - name: Tag image
+      ansible.builtin.shell: |
+        docker tag {{ image_name }}:{{ tag }} {{ image_name }}:l4t{{ real_l4t_version }}
+
+    - name: Get temporary registry access token
+      local_action:
+        module: ansible.builtin.command
+        _raw_params: gcloud auth application-default print-access-token
+      register: access_token_result
+
+    - name: Set access token variable
+      set_fact:
+        access_token: "{{ access_token_result.stdout }}"
+
+    - name: Push image
+      ansible.builtin.shell: |
+        echo "{{ access_token }}" | \
+        docker login -u oauth2accesstoken --password-stdin https://{{ location }}-docker.pkg.dev
+        echo "{{ access_token }}" | \
+        docker login -u oauth2accesstoken --password-stdin https://gcr.io/teknoir
+        docker push {{ image_name }}:{{ tag }}
+        docker push {{ image_name }}:l4t{{ real_l4t_version }}
+      vars:
+        ansible_command_timeout: 6000

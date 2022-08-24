@@ -32,17 +32,17 @@ args = {
     'MQTT_SERVICE_PORT': int(os.getenv('MQTT_SERVICE_PORT', '1883')),
     'MQTT_IN_0': os.getenv("MQTT_IN_0", "camera/images"),
     'MQTT_OUT_0': os.getenv("MQTT_OUT_0", f"{APP_NAME}/events"),
-    'WEIGHTS': os.getenv("WEIGHTS", f"{APP_NAME}/events"),
+    'WEIGHTS': os.getenv("WEIGHTS", ""),
     'CLASS_NAMES': os.getenv("CLASS_NAMES", ""),
     'TRAINING_DATASET': os.getenv("TRAINING_DATASET",""), # define from model config - better to use a registry
     'CLASSES': os.getenv("CLASSES", ""),
     'IMG_SIZE': int(os.getenv("IMG_SIZE", 416)),
     'CONF_THRESHOLD': float(os.getenv("CONF_THRESHOLD", 0.25)),
     'IOU_THRESHOLD': float(os.getenv("IOU_THRESHOLD", 0.45)),
-    'DEVICE': os.getenv("DEVICE",'cpu'),  # cuda device, i.e. 0 or 0,1,2,3 or cpu
+    'DEVICE': os.getenv("DEVICE", 'cpu'),  # cuda device, i.e. 0 or 0,1,2,3 or cpu
     'AUGMENTED_INFERENCE': os.getenv("AUGMENTED_INFERENCE", ""),
     'AGNOSTIC_NMS': os.getenv("AGNOSTIC_NMS", ""),
-    'MODEL_NAME': 'yolov7' # define from model config - better to use a registry
+    'MODEL_NAME': 'yolov7',  # define from model config - better to use a registry
 }
 
 if args["AUGMENTED_INFERENCE"] == "":
@@ -61,7 +61,7 @@ if args["CLASS_NAMES"] != "":
         for line in names_file:
             if line != "" and line != "\n":
                 class_names.append(line.strip())
-    args["CLASS_NAMES"] = class_names
+    args["CLASSES"] = class_names
 else:
     print("You must specify 'CLASS_NAMES'")
     sys.exit(1)
