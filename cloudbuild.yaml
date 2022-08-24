@@ -1,6 +1,13 @@
 timeout: '18000s'
 
 steps:
+  - id: Build NVIDIA Tegra images with edgebuild.yaml
+    name: gcr.io/teknoir/edgebuild
+    env:
+      - 'PROJECT_ID=$PROJECT_ID'
+      - 'BRANCH_NAME=$BRANCH_NAME'
+      - 'SHORT_SHA=$SHORT_SHA'
+
   - name: 'gcr.io/cloud-builders/docker'
     id: 'amd64'
     entrypoint: 'bash'
