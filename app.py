@@ -42,7 +42,7 @@ args = {
     'DEVICE': os.getenv("DEVICE", 'cpu'),  # cuda device, i.e. 0 or 0,1,2,3 or cpu
     'AUGMENTED_INFERENCE': os.getenv("AUGMENTED_INFERENCE", ""),
     'AGNOSTIC_NMS': os.getenv("AGNOSTIC_NMS", ""),
-    'MODEL_NAME': 'yolov7',  # define from model config - better to use a registry
+    'MODEL_NAME': os.getenv("MODEL_NAME", 'yolov7'),  # define from model config - better to use a registry
 }
 
 if args["AUGMENTED_INFERENCE"] == "":
