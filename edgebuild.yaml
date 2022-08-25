@@ -3,9 +3,6 @@
   hosts: all
   vars:
     project_id: "{{ lookup('env','PROJECT_ID') }}"
-#    ns: "{{ lookup('env','NAMESPACE') }}"
-#    branch_name: "{{ lookup('env','BRANCH_NAME') }}"
-    location: us-central1
   tasks:
     - name: Ensure workdir (and some subdirs)
       ansible.builtin.file:
@@ -53,7 +50,7 @@
         image_name: "gcr.io/teknoir/yolov7"
         tag: "l4t{{ l4t_version }}"
 
-    - name: Build ONNX yolov7 image
+    - name: Build PyTorch Yolov7 image
       ansible.builtin.shell: |
         export DOCKER_BUILDKIT=1
         docker build \
@@ -81,8 +78,6 @@
 
     - name: Push image
       ansible.builtin.shell: |
-        echo "{{ access_token }}" | \
-        docker login -u oauth2accesstoken --password-stdin https://{{ location }}-docker.pkg.dev
         echo "{{ access_token }}" | \
         docker login -u oauth2accesstoken --password-stdin https://gcr.io/teknoir
         docker push {{ image_name }}:{{ tag }}
