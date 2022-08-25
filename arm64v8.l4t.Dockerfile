@@ -1,9 +1,6 @@
 ARG BASE_IMAGE=nvcr.io/nvidia/l4t-pytorch:r32.7.1-pth1.10-py3
 FROM ${BASE_IMAGE} as base
 
-#RUN apt update && apt install --no-install-recommends -y zip htop screen libgl1-mesa-glx
-
-#COPY requirements.txt .
 RUN python3 -m pip install --upgrade pip wheel
 RUN python3 -m pip install --no-cache Pillow paho.mqtt numpy torch pandas requests torchvision opencv-python-headless tqdm PyYAML matplot seaborn
 

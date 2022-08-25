@@ -24,9 +24,3 @@ ARG CLASS_NAMES_FILE
 ENV CLASS_NAMES_FILE=$CLASS_NAMES_FILE
 ENV CLASS_NAMES=/usr/src/app/obj.names
 ADD $CLASS_NAMES_FILE $CLASS_NAMES
-
-#RUN wget https://raw.githubusercontent.com/onnx/models/main/vision/object_detection_segmentation/yolov4/dependencies/coco.names
-#ENV CLASS_NAMES=/usr/src/app/coco.names
-#RUN wget https://github.com/WongKinYiu/yolov7/releases/download/v0.1/yolov7.pt
-#ENV WEIGHTS=/usr/src/app/yolov7.pt
-#ENV IMG_SIZE=640
