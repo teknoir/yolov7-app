@@ -17,16 +17,8 @@
         recursive: yes
         delete: yes
         rsync_opts:
-          - --include=cfg/
-          - --include=cfg/baseline/
-          - --include=cfg/deploy/
-          - --include=cfg/training/
-          - --include=data/
           - --include=models/
           - --include=utils/
-          - --include=utils/aws/
-          - --include=utils/google_app_engine/
-          - --include=utils/wandb_logging/
           - --include=*.yaml
           - --include=*.txt
           - --include=*.sh

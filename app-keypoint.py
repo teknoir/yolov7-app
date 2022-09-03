@@ -29,7 +29,7 @@ args = {
     'MQTT_SERVICE_PORT': int(os.getenv('MQTT_SERVICE_PORT', '1883')),
     'MQTT_IN_0': os.getenv("MQTT_IN_0", "camera/images"),
     'MQTT_OUT_0': os.getenv("MQTT_OUT_0", f"{APP_NAME}/events"),
-    'WEIGHTS': os.getenv("WEIGHTS", "weights/yolov7-w6-pose.pt"),
+    'WEIGHTS': os.getenv("WEIGHTS", "datasets/yolo-pose/yolov7-w6-pose.pt"),
     'TRAINING_DATASET': os.getenv("TRAINING_DATASET",""), # define from model config - better to use a registry
     'IMG_SIZE': int(os.getenv("IMG_SIZE", 960)),
     'STRIDE': int(os.getenv("STRIDE", 64)),

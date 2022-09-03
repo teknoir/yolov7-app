@@ -57,7 +57,7 @@ else:
 
 if args["CLASS_NAMES"] != "":
     class_names = []
-    with open(args["CLASS_NAMES"],"r") as names_file:
+    with open(args["CLASS_NAMES"],"r",encoding='utf-8') as names_file:
         for line in names_file:
             if line != "" and line != "\n":
                 class_names.append(line.strip())
@@ -208,7 +208,7 @@ def detect(userdata, im0, image_mime):
                                         'width': xywh[2],
                                         'height': xywh[3],
                                         'confidence': conf})
-                    plot_one_box(xyxy, annotated, color=(0,255,0), label=f'{label} {conf:.2f}', line_thickness=1)
+                    plot_one_box(xyxy, annotated, color=(255,255,255), label=f'{label} {conf:.2f}', line_thickness=1)
 
     payload = {
         "model": userdata["MODEL_NAME"],
