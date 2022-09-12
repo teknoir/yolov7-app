@@ -9,7 +9,7 @@ WORKDIR /usr/src/app
 
 ADD . /usr/src/app
 
-ENV OMP_NUM_THREADS=8
+ENV OMP_NUM_THREADS=1
 ENV WANDB_MODE=disabled
 ENV DEVICE=0
 
