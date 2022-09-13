@@ -201,6 +201,7 @@ def detect(userdata, im0, image_mime):
                 if label:
                     detections.append({'objId': object_id,
                                         'id': object_id,
+                                        'det': det[:, :4].tolist()
                                         'nx': img.shape[1],
                                         'ny': img.shape[0],
                                         'bbox': [xywh[0],xywh[1],xywh[2],xywh[3]],
