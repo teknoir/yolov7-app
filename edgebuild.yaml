@@ -33,12 +33,26 @@
 
     - name: Set L4T Version variable
       set_fact:
-        real_l4t_version: "r{{ nv_tegra_release_content.stdout | regex_search('R(\\d+).*REVISION:\\s+(\\d+.\\d+)', '\\1', '\\2') | join('.') }}"
+        l4t_version: "r{{ nv_tegra_release_content.stdout | regex_search('R(\\d+).*REVISION:\\s+(\\d+.\\d+)', '\\1', '\\2') | join('.') }}"
+
+    - name: Fix Nvidia versioning f-up
+      set_fact:
+        real_l4t_version: r32.7.2
         l4t_version: r32.7.1
+      when: l4t_version == "r32.7.2"
+
+    - name: Set images var
+      set_fact:
+        base_images:
+          "r32.6.1": "nvcr.io/nvidia/l4t-pytorch:r32.6.1-pth1.9-py3"
+          "r32.7.1": "nvcr.io/nvidia/l4t-pytorch:r32.7.1-pth1.10-py3"
+          "r32.7.2": "nvcr.io/nvidia/l4t-pytorch:r32.7.1-pth1.10-py3"
+          "r34.1.1": "nvcr.io/nvidia/l4t-pytorch:r34.1.1-pth1.12-py3"
+          "r35.1.0": "nvcr.io/nvidia/l4t-pytorch:r35.1.0-pth1.13-py3"
 
     - name: Set image vars
       set_fact:
-        base_image: "nvcr.io/nvidia/l4t-pytorch:{{ l4t_version }}-pth1.10-py3"
+        base_image: "{{ base_images[l4t_version] }}"
         image_name: "gcr.io/teknoir/yolov7"
         tag: "l4t{{ l4t_version }}"
 
@@ -53,10 +67,6 @@
         chdir: /opt/teknoir/yolov7
       vars:
         ansible_command_timeout: 6000
-
-    - name: Tag image
-      ansible.builtin.shell: |
-        docker tag {{ image_name }}:{{ tag }} {{ image_name }}:l4t{{ real_l4t_version }}
 
     - name: Get temporary registry access token
       local_action:
@@ -73,6 +83,13 @@
         echo "{{ access_token }}" | \
         docker login -u oauth2accesstoken --password-stdin https://gcr.io/teknoir
         docker push {{ image_name }}:{{ tag }}
-        docker push {{ image_name }}:l4t{{ real_l4t_version }}
       vars:
         ansible_command_timeout: 6000
+
+    - name: Fix Nvidia versioning f-up
+      ansible.builtin.shell: |
+        docker tag {{ image_name }}:{{ tag }} {{ image_name }}:l4t{{ real_l4t_version }}
+        docker push {{ image_name }}:l4tr{{ real_l4t_version }}
+      vars:
+        ansible_command_timeout: 6000
+      when: l4t_version == "r32.7.1"

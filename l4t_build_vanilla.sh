@@ -24,19 +24,26 @@ download_cache(){
 download_cache coco.names https://raw.githubusercontent.com/onnx/models/main/vision/object_detection_segmentation/yolov4/dependencies/coco.names
 download_cache yolov7.pt https://github.com/WongKinYiu/yolov7/releases/download/v0.1/yolov7.pt
 
-# Make sure the latest version of base image is local
-docker pull gcr.io/teknoir/yolov7:l4tr32.7.1
+build_and_push(){
+  TAG=$1
+  # Make sure the latest version of base image is local
+  docker pull gcr.io/teknoir/yolov7:${TAG}
 
-# Build and set values specific to this model
-docker buildx build \
-  --build-arg=BASE_IMAGE=gcr.io/teknoir/yolov7:l4tr32.7.1 \
-  --build-arg=MODEL_NAME=yolov7-vanilla \
-  --build-arg=TRAINING_DATASET=cocoa \
-  --build-arg=IMG_SIZE=640 \
-  --build-arg=WEIGHTS_FILE=yolov7.pt \
-  --build-arg=CLASS_NAMES_FILE=coco.names \
-  --platform=linux/arm64 \
-  -t gcr.io/${PROJECT_ID}/yolov7-vanilla:l4tr32.7.1-${BRANCH_NAME}-${SHORT_SHA} \
-  -f ./arm64v8.l4t.yolov7.Dockerfile .
+  # Build and set values specific to this model
+  docker buildx build \
+    --build-arg=BASE_IMAGE=gcr.io/teknoir/yolov7:${TAG} \
+    --build-arg=MODEL_NAME=yolov7-vanilla \
+    --build-arg=TRAINING_DATASET=cocoa \
+    --build-arg=IMG_SIZE=640 \
+    --build-arg=WEIGHTS_FILE=yolov7.pt \
+    --build-arg=CLASS_NAMES_FILE=coco.names \
+    --platform=linux/arm64 \
+    --push \
+    -t gcr.io/${PROJECT_ID}/yolov7-vanilla:${TAG}-${BRANCH_NAME}-${SHORT_SHA} \
+    -f ./arm64v8.l4t.yolov7.Dockerfile .
 
-docker push gcr.io/${PROJECT_ID}/yolov7-vanilla:l4tr32.7.1-${BRANCH_NAME}-${SHORT_SHA}
+#  docker push gcr.io/${PROJECT_ID}/yolov7-vanilla:${TAG}-${BRANCH_NAME}-${SHORT_SHA}
+}
+
+build_and_push l4tr34.1.1
+build_and_push l4tr32.7.1
