@@ -2,6 +2,7 @@ import time
 import os
 import sys
 import logging
+import gc
 
 import json
 import base64
@@ -34,7 +35,6 @@ args = {
     'MQTT_OUT_0': os.getenv("MQTT_OUT_0", f"{APP_NAME}/events"),
     'WEIGHTS': os.getenv("WEIGHTS", ""),
     'CLASS_NAMES': os.getenv("CLASS_NAMES", ""),
-    'TRAINING_DATASET': os.getenv("TRAINING_DATASET",""), # define from model config - better to use a registry
     'CLASSES': os.getenv("CLASSES", ""),
     'IMG_SIZE': int(os.getenv("IMG_SIZE", 416)),
     'CONF_THRESHOLD': float(os.getenv("CONF_THRESHOLD", 0.25)),
@@ -98,13 +98,6 @@ def base64_encode(ndarray_image):
     return f"data:image/jpeg;base64,{string_encoded}"
 
 
-# def base64_decode(utf8_image):
-#     image_mime = str(utf8_image.decode("utf-8", "ignore"))
-#     _, image_base64 = image_mime.split(',', 1)
-#     image = Image.open(BytesIO(base64.b64decode(image_base64)))
-#     return image, image_mime
-
-
 class NumpyEncoder(json.JSONEncoder):
     """ Special json encoder for numpy types """
 
@@ -162,17 +155,19 @@ def detect(userdata, im0, image_mime):
 
     img = np.expand_dims(img, axis=0)
 
+    # if img.ndimension() == 3:
+    #     img = img.unsqueeze(0)
+
     t0 = time.time()
     img_tensor = torch.from_numpy(img).to(device)
     img_tensor = img_tensor.half() if half else img_tensor.float()  # uint8 to fp16/32
     img_tensor /= 255.0  # 0 - 255 to 0.0 - 1.0
-    # if img.ndimension() == 3:
-    #     img = img.unsqueeze(0)
+
 
     # Inference
     t1 = time_synchronized()
     pred = userdata['MODEL'](img_tensor, augment=userdata["AUGMENTED_INFERENCE"])[0]
-    print(pred[..., 4].max())
+    # print(pred[..., 4].max())
 
     # Apply NMS
     pred = non_max_suppression(pred,
@@ -187,11 +182,13 @@ def detect(userdata, im0, image_mime):
     # Process detections
     detections = []
     for i, det in enumerate(pred):  # detections per image
-        gn = torch.tensor(img_tensor.shape)[[1, 0, 1, 0]]  # normalization gain whwh
         if len(det):
             # Rescale boxes from img_size to im0 size
             det[:, :4] = scale_coords(img_tensor.shape[2:], det[:, :4], im0.shape).round()
 
+            gn = torch.tensor(img_tensor.shape)[[1, 0, 1, 0]]  # normalization gain whwh
+
+            object_id = 0
             for *xyxy, confidence, detected_label in reversed(det):
                 xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()  # normalized xywh
                 conf = confidence.item()
@@ -202,28 +199,38 @@ def detect(userdata, im0, image_mime):
                     label = userdata["CLASS_NAMES"][label_index]
 
                 if label:
-                    detections.append({'label': label, 
-                                        'x': xywh[0],
-                                        'y': xywh[1],
+                    detections.append({'objId': object_id,
+                                        'id': object_id,
+                                        'nx': img.shape[1],
+                                        'ny': img.shape[0],
+                                        'bbox': [xywh[0],xywh[1],xywh[2],xywh[3]],
+                                        'className': label,
+                                        'label': label,
+                                        'xmin': xywh[0],
+                                        'ymin': xywh[1],
                                         'width': xywh[2],
                                         'height': xywh[3],
-                                        'confidence': conf})
-                    plot_one_box(xyxy, annotated, color=(255,255,255), label=f'{label} {conf:.2f}', line_thickness=1)
+                                        'xmax': xywh[0]+xywh[2],
+                                        'ymax': xywh[1]+xywh[3],
+                                        'area': xywh[2]*xywh[3],
+                                        'score': conf})
+                    # plot_one_box(xyxy, annotated, color=(0,255,0), label=f'{label} {conf:.2f}', line_thickness=1)
+                    object_id += 1
 
     payload = {
         "model": userdata["MODEL_NAME"],
         "image": base64_encode(annotated),
-        "load_time": t1 - t0,
         "inference_time": t2 - t1,
-        "total_time": t2 - t0,
-        "training_dataset": userdata["TRAINING_DATASET"],
-        "detected_objects": detections
+        "objects": detections
     }
 
     msg = json.dumps(payload, cls=NumpyEncoder)
     client.publish(userdata['MQTT_OUT_0'], msg)
     payload["image"] = "%s... - truncated for logs" % payload["image"][0:32]
     logger.info(payload)
+
+    del payload, detections, img_tensor, gn, annotated, conf, label, xywh, xyxy, pred, img, t0, t1, t2, confidence, detected_label, label_index, det, im0 
+    gc.collect()
 
 
 def on_message(c, userdata, msg):
@@ -232,7 +239,6 @@ def on_message(c, userdata, msg):
         _, image_base64 = image_mime.split(',', 1)
         image = Image.open(BytesIO(base64.b64decode(image_base64)))
         detect(userdata, im0=np.array(image), image_mime=image_mime)
-
     except Exception as e:
         logger.error('Error:', e)
         exit(1)
