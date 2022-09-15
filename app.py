@@ -140,6 +140,8 @@ if device.type != 'cpu':
     model(torch.zeros(1, 3, imgsz, imgsz).to(device).type_as(
         next(model.parameters())))  # run once
 
+model.eval()
+
 args["MODEL"] = model
 args["STRIDE"] = stride
 
@@ -155,83 +157,77 @@ def detect(userdata, im0, image_mime):
 
     img = np.expand_dims(img, axis=0)
 
-    # if img.ndimension() == 3:
-    #     img = img.unsqueeze(0)
-
     t0 = time.time()
     img_tensor = torch.from_numpy(img).to(device)
     img_tensor = img_tensor.half() if half else img_tensor.float()  # uint8 to fp16/32
     img_tensor /= 255.0  # 0 - 255 to 0.0 - 1.0
 
-
     # Inference
-    t1 = time_synchronized()
-    pred = userdata['MODEL'](img_tensor, augment=userdata["AUGMENTED_INFERENCE"])[0]
-    # print(pred[..., 4].max())
+    with torch.no_grad():
 
-    # Apply NMS
-    pred = non_max_suppression(pred,
-                               userdata["CONF_THRESHOLD"],
-                               userdata["IOU_THRESHOLD"],
-                               classes=userdata["CLASSES"],
-                               agnostic=userdata["AGNOSTIC_NMS"])
-    t2 = time_synchronized()
+        t1 = time_synchronized()
+        pred = userdata['MODEL'](img_tensor, augment=userdata["AUGMENTED_INFERENCE"])[0]
+        pred = non_max_suppression(pred,
+                                userdata["CONF_THRESHOLD"],
+                                userdata["IOU_THRESHOLD"],
+                                classes=userdata["CLASSES"],
+                                agnostic=userdata["AGNOSTIC_NMS"])
+        t2 = time_synchronized()
 
-    annotated = im0.copy()
+        detections = []
+        for i, det in enumerate(pred):
+            if len(det):
+                # Rescale boxes from img_size to im0 size
+                det[:, :4] = scale_coords(img_tensor.shape[2:], det[:, :4], im0.shape).round()
 
-    # Process detections
-    detections = []
-    for i, det in enumerate(pred):  # detections per image
-        if len(det):
-            # Rescale boxes from img_size to im0 size
-            det[:, :4] = scale_coords(img_tensor.shape[2:], det[:, :4], im0.shape).round()
+                gn = torch.tensor(img_tensor.shape)[[1, 0, 1, 0]]  # normalization gain whwh
 
-            gn = torch.tensor(img_tensor.shape)[[1, 0, 1, 0]]  # normalization gain whwh
+                object_id = 0
+                for *xyxy, confidence, detected_label in reversed(det):
+                    xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) ).view(-1).tolist()  # normalized xywh
+                    conf = confidence.item()
+                    
+                    label_index = int(detected_label.item())                
+                    label=None
+                    if label_index >= 0 and label_index < len(userdata["CLASS_NAMES"]):
+                        label = userdata["CLASS_NAMES"][label_index]
 
-            object_id = 0
-            for *xyxy, confidence, detected_label in reversed(det):
-                xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()  # normalized xywh
-                conf = confidence.item()
-                
-                label_index = int(detected_label.item())                
-                label=None
-                if label_index >= 0 and label_index < len(userdata["CLASS_NAMES"]):
-                    label = userdata["CLASS_NAMES"][label_index]
+                    if label:
+                        detections.append({'objId': object_id,
+                                            'id': object_id,
+                                            'nx': im0.shape[1],
+                                            'ny': im0.shape[0],
+                                            'bbox': [(xywh[0]-xywh[2]/2.)/im0.shape[1],
+                                                     (xywh[1]-xywh[3]/2.)/im0.shape[0],
+                                                     (xywh[2])/im0.shape[1],
+                                                     (xywh[3])/im0.shape[0]],
+                                            'className': label,
+                                            'label': label,
+                                            'xmin': int(xywh[0]-xywh[2]/2.),
+                                            'ymin': int(xywh[1]-xywh[3]/2.),
+                                            'width': xywh[2],
+                                            'height': xywh[3],
+                                            'xmax': int((xywh[0]-xywh[2]/2.)+xywh[2]),
+                                            'ymax': int((xywh[1]-xywh[3]/2.)+xywh[3]),
+                                            'area': xywh[2]*xywh[3],
+                                            'score': conf})
+                        object_id += 1
+    
+        payload = {
+            "model": userdata["MODEL_NAME"],
+            "image": image_mime,
+            "inference_time": t2 - t1,
+            "objects": detections
+        }
 
-                if label:
-                    detections.append({'objId': object_id,
-                                        'id': object_id,
-                                        'det': det[:, :4].tolist()
-                                        'nx': img.shape[1],
-                                        'ny': img.shape[0],
-                                        'bbox': [xywh[0],xywh[1],xywh[2],xywh[3]],
-                                        'className': label,
-                                        'label': label,
-                                        'xmin': xywh[0],
-                                        'ymin': xywh[1],
-                                        'width': xywh[2],
-                                        'height': xywh[3],
-                                        'xmax': xywh[0]+xywh[2],
-                                        'ymax': xywh[1]+xywh[3],
-                                        'area': xywh[2]*xywh[3],
-                                        'score': conf})
-                    # plot_one_box(xyxy, annotated, color=(0,255,0), label=f'{label} {conf:.2f}', line_thickness=1)
-                    object_id += 1
+        msg = json.dumps(payload, cls=NumpyEncoder)
+        client.publish(userdata['MQTT_OUT_0'], msg)
+        payload["image"] = "%s... - truncated for logs" % payload["image"][0:32]
+        logger.info(payload)
 
-    payload = {
-        "model": userdata["MODEL_NAME"],
-        "image": base64_encode(annotated),
-        "inference_time": t2 - t1,
-        "objects": detections
-    }
-
-    msg = json.dumps(payload, cls=NumpyEncoder)
-    client.publish(userdata['MQTT_OUT_0'], msg)
-    payload["image"] = "%s... - truncated for logs" % payload["image"][0:32]
-    logger.info(payload)
-
-    del payload, detections, img_tensor, gn, annotated, conf, label, xywh, xyxy, pred, img, t0, t1, t2, confidence, detected_label, label_index, det, im0 
+    del payload, detections, img_tensor, gn, conf, label, xywh, xyxy, pred, img, t0, t1, t2, confidence, detected_label, label_index, det
     gc.collect()
+    torch.cuda.empty_cache()
 
 
 def on_message(c, userdata, msg):
