@@ -78,9 +78,9 @@ ch.setFormatter(formatter)
 logger.addHandler(ch)
 logger.setLevel(logging.INFO)
 
-logger.info("TΞꓘN01R")
-logger.info("TΞꓘN01R")
-logger.info("TΞꓘN01R")
+logger.info("TEKNOIR")
+logger.info("TEKNOIR")
+logger.info("TEKNOIR")
 
 
 def error_str(rc):
@@ -89,13 +89,6 @@ def error_str(rc):
 
 def on_connect(_client, _userdata, _flags, rc):
     logger.info('Connected to MQTT broker {}'.format(error_str(rc)))
-
-
-def base64_encode(ndarray_image):
-    buff = BytesIO()
-    Image.fromarray(ndarray_image).save(buff, format='JPEG')
-    string_encoded = base64.b64encode(buff.getvalue()).decode("utf-8")
-    return f"data:image/jpeg;base64,{string_encoded}"
 
 
 class NumpyEncoder(json.JSONEncoder):
@@ -176,6 +169,18 @@ def detect(userdata, im0, image_mime):
 
         detections = []
         for i, det in enumerate(pred):
+
+            # in case there are no predictions - eventually move "del" statement up in the code to avoid this
+            gn = None
+            conf = None
+            xyxy = None
+            xywh = None
+            label_index = None
+            label = None
+            label_index = None
+            confidence = None
+            detected_label = None
+
             if len(det):
                 # Rescale boxes from img_size to im0 size
                 det[:, :4] = scale_coords(img_tensor.shape[2:], det[:, :4], im0.shape).round()
